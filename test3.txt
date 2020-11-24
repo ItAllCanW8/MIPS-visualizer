@@ -1,0 +1,18 @@
+lw $t0, 4($gp)
+add $t1, $t0, $t2
+lw $t0, 4($gp)
+add $t1, $t0, $t2
+lw $t0, 4($gp)
+add $t1, $t0, $t2
+add $t1, $t0, $t2
+lw $t0, 4($gp)
+add $t1, $t0, $t2
+add $t1, $t0, $t2
+add $t1, $t0, $t2
+add $t1, $t0, $t2
+add $t1, $t0, $t2
+add $t1, $t0, $t2
+add $t1, $t0, $t2
+add $t1, $t0, $t2
+lw $t0, 4($gp)
+add $t1, $t0, $t2
