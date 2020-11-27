@@ -1,3 +1,4 @@
+import json
 import sys
 from PyQt5.uic import loadUi
 from PyQt5 import QtWidgets, QtGui
@@ -20,18 +21,82 @@ def show_popup(fileLoadFail, notMachine):
     msg.setIcon(QMessageBox.Warning)
 
     msg.exec()
-    pass
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
         loadUi("main.ui", self)
-        self.setWindowTitle("MIPS Pipeline Visualizer")
         self.instructions = []
+        self.tableWidget.setFixedHeight(940)
+        self.tableWidget.setFixedWidth(1090)
         self.loadAsmButton.clicked.connect(partial(self.load_file, False))
         self.loadMachineButton.clicked.connect(partial(self.load_file, True))
+        self.loadJSONButton.clicked.connect(partial(self.load_file, False))
         self.visualizeButton.clicked.connect(self.visualize_pipeline)
+        self.clearButton.clicked.connect(self.clear)
+
+    def clear(self):
+        self.tableWidget.setRowCount(0)
+        self.tableWidget.setColumnCount(0)
+        rowHeaders = []
+        colHeaders = []
+        self.tableWidget.setVerticalHeaderLabels(rowHeaders)
+        self.tableWidget.setHorizontalHeaderLabels(colHeaders)
+
+    def handle_json(self, data):
+        rowHeaders = []
+        colHeaders = []
+
+        colCounter = 0
+
+        self.tableWidget.setRowCount(data[0][-1]['id'] + 1)
+        # self.tableWidget.setColumnCount(data[0][-1]['cycle'])
+
+        # for i in range(self.tableWidget.columnCount()):
+        #     colHeaders.append("CC" + str(i + 1))
+
+        stages = []
+
+        for line in data[0]:
+            type = line['type']
+            id = line['id']
+
+            if type == "Event":
+                cycle = line['cycle']
+                stage = line['stage']
+
+                if "CC" + str(cycle) not in colHeaders:
+                    colHeaders.append("CC" + str(cycle))
+                    self.tableWidget.insertColumn(colCounter)
+                    colCounter = colCounter + 1
+
+                row = id
+                # self.tableWidget.setItem(row, cycle - 1, QtWidgets.QTableWidgetItem(stages[stage]))
+                self.fill_cell(row, colCounter - 1, stages[stage])
+
+            elif type == "Stage":
+                description = line['description']
+
+                if description == 'Fetch':
+                    path = "img/fetch.png"
+                elif description == 'Decode':
+                    path = "img/decode.png"
+                elif description == 'Execute':
+                    path = "img/execute.png"
+                elif description == 'Memory':
+                    path = "img/memory.png"
+                elif description == 'Writeback':
+                    path = "img/writeback.png"
+
+                stages.insert(id, path)
+
+            elif type == "Record":
+                disassembly = line['disassembly']
+                rowHeaders.append(disassembly)
+
+        self.tableWidget.setVerticalHeaderLabels(rowHeaders)
+        self.tableWidget.setHorizontalHeaderLabels(colHeaders)
 
     def fetch_and_decode(self, asm, machineCode):
         self.instructions = []
@@ -75,8 +140,11 @@ class MainWindow(QMainWindow):
             row = row + 1
 
         self.tableWidget.setVerticalHeaderLabels(rowHeaders)
+        self.tableWidget.setHorizontalHeaderLabels(colHeaders)
 
     def load_file(self, machineCode):
+        self.clear()
+
         dialog = QFileDialog()
         dialog.setFileMode(QFileDialog.ExistingFile)
         dialog.setFilter(QDir.Files)
@@ -84,7 +152,13 @@ class MainWindow(QMainWindow):
         if dialog.exec_():
             fileName = dialog.selectedFiles()
 
-            if fileName[0].endswith('.txt') or fileName[0].endswith('.asm'):
+            if fileName[0].endswith('.json'):
+                with open(fileName[0], 'r') as f:
+                    data = json.load(f)
+
+                    self.handle_json(data)
+
+            elif fileName[0].endswith('.txt') or fileName[0].endswith('.asm'):
                 with open(fileName[0], 'r') as f:
                     if not machineCode:
                         asm = [line.rstrip('\n') for line in f]
@@ -111,6 +185,10 @@ class MainWindow(QMainWindow):
         imgLabel.setPixmap(pixmap)
 
         return imgLabel
+
+    def fill_cell(self, row, col, path):
+        img = self.get_img_label(path)
+        self.tableWidget.setCellWidget(row, col, img)
 
     def fill_line(self, row, col, pipeline):
 
@@ -252,9 +330,9 @@ if __name__ == '__main__':
     mainWindow = MainWindow()
     widget = QtWidgets.QStackedWidget()
     widget.addWidget(mainWindow)
-    widget.setFixedHeight(809)
-    widget.setFixedWidth(1218)
+    widget.setFixedHeight(1000)
+    widget.setFixedWidth(1248)
     widget.setWindowTitle("MIPS Pipeline Visualizer")
-    widget.showMaximized()
+    widget.show()
 
     sys.exit(app.exec_())
